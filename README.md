@@ -4,7 +4,7 @@
 
 一款原创手绘风 WebGL 植物塔防游戏，使用 Phaser 3 与 Vite 构建，支持桌面和移动浏览器。
 
-## 🎮 [立即在线体验](https://synapshift.github.io/garden-wardens/)
+**[在线试玩 →](https://synapshift.github.io/garden-wardens/)** · 无需安装，打开浏览器即可游玩
 
 ![花园守夜人游戏画面](assets/gameplay-preview.png)
 

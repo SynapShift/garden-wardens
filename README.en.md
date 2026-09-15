@@ -4,7 +4,7 @@
 
 An original hand-painted WebGL garden-defense game built with Phaser 3 and Vite, playable on desktop and mobile browsers.
 
-## 🎮 [Play Online](https://synapshift.github.io/garden-wardens/)
+**[Play online →](https://synapshift.github.io/garden-wardens/)** · No installation required
 
 ![Garden Wardens gameplay](assets/gameplay-preview.png)
 
