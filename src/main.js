@@ -217,7 +217,7 @@ class GameScene extends Phaser.Scene {
 
   createMowers() {
     for (let row = 0; row < BOARD.rows; row += 1) {
-      const sprite = this.add.image(187, this.rowY(row) + 26, "mower").setScale(0.78).setDepth(this.rowDepth(row) + 4);
+      const sprite = this.add.image(187, this.groundY(row), "mower").setOrigin(0.5, 1).setScale(0.78).setDepth(this.rowDepth(row) + 4);
       this.mowers.push({ row, sprite, active: false, used: false });
     }
   }
@@ -268,11 +268,11 @@ class GameScene extends Phaser.Scene {
     if (this.energy < data.cost) return this.toast(`还需要 ${data.cost - Math.floor(this.energy)} 点能量`);
     this.energy -= data.cost;
     const x = this.colX(cell.col);
-    const y = this.rowY(cell.row) + 16;
-    const sprite = this.add.image(x, y, this.selected).setScale(0.02).setDepth(this.rowDepth(cell.row) + 2);
-    const healthBg = this.add.rectangle(x, y + 60, 72, 7, 0x142019, 0.65).setDepth(sprite.depth + 2).setVisible(false);
-    const health = this.add.rectangle(x - 36, y + 60, 72, 7, 0x7fd466).setOrigin(0, 0.5).setDepth(sprite.depth + 3).setVisible(false);
-    const levelText = this.add.text(x, y - 70, "LV.1", { fontSize: 11, fontStyle: "bold", color: "#ffffff", stroke: "#25412c", strokeThickness: 4 }).setOrigin(0.5).setDepth(sprite.depth + 3).setVisible(false);
+    const y = this.groundY(cell.row);
+    const sprite = this.add.image(x, y, this.selected).setOrigin(0.5, 0.934).setScale(0.02).setDepth(this.rowDepth(cell.row) + 2);
+    const healthBg = this.add.rectangle(x, y + 8, 72, 7, 0x142019, 0.65).setDepth(sprite.depth + 2).setVisible(false);
+    const health = this.add.rectangle(x - 36, y + 8, 72, 7, 0x7fd466).setOrigin(0, 0.5).setDepth(sprite.depth + 3).setVisible(false);
+    const levelText = this.add.text(x, y - 105, "LV.1", { fontSize: 11, fontStyle: "bold", color: "#ffffff", stroke: "#25412c", strokeThickness: 4 }).setOrigin(0.5).setDepth(sprite.depth + 3).setVisible(false);
     const plant = { type: this.selected, row: cell.row, col: cell.col, sprite, health, healthBg, levelText, hp: data.hp, maxHp: data.hp, cooldown: data.cooldown * 0.45, level: 1, baseScale: data.scale };
     this.entities.push(plant);
     this.tweens.add({ targets: sprite, scaleX: data.scale, scaleY: data.scale, duration: 370, ease: "Back.Out" });
@@ -283,6 +283,7 @@ class GameScene extends Phaser.Scene {
 
   colX(col) { return BOARD.x + col * BOARD.cellW + BOARD.cellW / 2; }
   rowY(row) { return BOARD.y + row * BOARD.cellH + BOARD.cellH / 2; }
+  groundY(row) { return this.rowY(row) + 32; }
   rowDepth(row) { return 10 + row * 10; }
 
   spawnEnemy() {
@@ -294,10 +295,10 @@ class GameScene extends Phaser.Scene {
     const data = ENEMIES[type];
     const row = Phaser.Math.Between(0, BOARD.rows - 1);
     const scaleUp = 1 + (this.wave - 1) * 0.13;
-    const sprite = this.add.image(WIDTH + 90, this.rowY(row) + 8, type).setScale(data.scale).setDepth(this.rowDepth(row) + 5);
-    const shadow = this.add.ellipse(sprite.x, sprite.y + 57, type === "brute" ? 105 : 72, 20, 0x102015, 0.22).setDepth(sprite.depth - 1);
-    const healthBg = this.add.rectangle(sprite.x, sprite.y - 78, 76, 8, 0x182019, 0.7).setDepth(sprite.depth + 3);
-    const health = this.add.rectangle(sprite.x - 38, sprite.y - 78, 76, 8, 0xe76c4d).setOrigin(0, 0.5).setDepth(sprite.depth + 4);
+    const sprite = this.add.image(WIDTH + 90, this.groundY(row), type).setOrigin(0.5, 0.934).setScale(data.scale).setDepth(this.rowDepth(row) + 5);
+    const shadow = this.add.ellipse(sprite.x, this.groundY(row) + 3, type === "brute" ? 105 : 72, 20, 0x102015, 0.22).setDepth(sprite.depth - 1);
+    const healthBg = this.add.rectangle(sprite.x, sprite.y - 102, 76, 8, 0x182019, 0.7).setDepth(sprite.depth + 3);
+    const health = this.add.rectangle(sprite.x - 38, sprite.y - 102, 76, 8, 0xe76c4d).setOrigin(0, 0.5).setDepth(sprite.depth + 4);
     const enemy = { type, row, sprite, shadow, health, healthBg, hp: data.hp * scaleUp, maxHp: data.hp * scaleUp, speed: data.speed * (1 + this.wave * 0.025), slow: 0, attackClock: 0 };
     this.enemyUnits.push(enemy);
     this.tweens.add({ targets: sprite, y: sprite.y - 6, angle: { from: -1.2, to: 1.2 }, duration: type === "runner" ? 240 : 390, yoyo: true, repeat: -1, ease: "Sine.InOut" });
@@ -406,9 +407,9 @@ class GameScene extends Phaser.Scene {
       } else {
         enemy.sprite.x -= enemy.speed * (enemy.slow > 0 ? 0.48 : 1) * dt;
       }
-      enemy.shadow.setPosition(enemy.sprite.x, this.rowY(enemy.row) + 65);
-      enemy.healthBg.setPosition(enemy.sprite.x, enemy.sprite.y - 78);
-      enemy.health.setPosition(enemy.sprite.x - 38, enemy.sprite.y - 78).setDisplaySize(76 * Math.max(0, enemy.hp / enemy.maxHp), 8);
+      enemy.shadow.setPosition(enemy.sprite.x, this.groundY(enemy.row) + 3);
+      enemy.healthBg.setPosition(enemy.sprite.x, enemy.sprite.y - 102);
+      enemy.health.setPosition(enemy.sprite.x - 38, enemy.sprite.y - 102).setDisplaySize(76 * Math.max(0, enemy.hp / enemy.maxHp), 8);
       if (enemy.sprite.x < BOARD.x - 42) {
         const mower = this.mowers[enemy.row];
         if (!mower.used) { mower.used = true; mower.active = true; this.toast("应急割草车启动！"); this.soundCue(130, 0.18, "sawtooth", 0.035); }
@@ -512,9 +513,9 @@ class GameScene extends Phaser.Scene {
     this.cards?.forEach((card) => this.drawCard(card));
     for (const plant of this.entities) {
       const hurt = plant.hp < plant.maxHp;
-      plant.healthBg.setVisible(hurt).setPosition(plant.sprite.x, plant.sprite.y + 64);
-      plant.health.setVisible(hurt).setPosition(plant.sprite.x - 36, plant.sprite.y + 64).setDisplaySize(72 * Math.max(0, plant.hp / plant.maxHp), 7);
-      plant.levelText.setPosition(plant.sprite.x, plant.sprite.y - 70);
+      plant.healthBg.setVisible(hurt).setPosition(plant.sprite.x, plant.sprite.y + 8);
+      plant.health.setVisible(hurt).setPosition(plant.sprite.x - 36, plant.sprite.y + 8).setDisplaySize(72 * Math.max(0, plant.hp / plant.maxHp), 7);
+      plant.levelText.setPosition(plant.sprite.x, plant.sprite.y - 105);
     }
   }
 
