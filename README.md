@@ -1,5 +1,9 @@
 # 花园守夜人 · Garden Wardens
 
+[中文](#中文) · [English](#english)
+
+## 中文
+
 一个原创、手绘风格的 WebGL 植物塔防游戏。项目使用 Phaser 3 + Vite 构建，支持桌面和移动浏览器，可直接部署到 GitHub Pages。
 
 ![花园守夜人游戏画面](assets/gameplay-preview.png)
@@ -93,6 +97,103 @@ python tools/process_assets.py
 
 代码使用 [MIT License](LICENSE)。游戏名称、角色和当前美术均按原创项目设计，没有打包其他游戏的代码或素材。
 
-AI 生成或辅助生成的美术在不同地区可能适用不同规则；发布前请根据目标平台和所在地确认相关政策。后续引入第三方字体、音乐或素材时，应在仓库中记录来源和许可证。
-
 欢迎提交 Issue 和 Pull Request。
+
+---
+
+## English
+
+An original hand-painted WebGL garden-defense game built with Phaser 3 and Vite. It supports desktop and mobile browsers and is playable directly through GitHub Pages.
+
+![Garden Wardens gameplay](assets/gameplay-preview.png)
+
+### Features
+
+- Five garden lanes, nine planting columns, and six progressively harder waves
+- Four original plant wardens and four original garden invaders
+- Day/night resonance, three-level plant fusion, dynamic weather, and energy recovery
+- Hand-painted transparent character sprites and a dedicated battlefield background
+- Breathing, swaying, planting, recoil, and walking animations
+- Projectile trails, burst particles, hit flashes, slow effects, and camera shake
+- Synthesized Web Audio feedback with no additional audio files
+- Keyboard, mouse, and touch controls
+- Automatic GitHub Pages deployment through GitHub Actions
+
+### Run locally
+
+Node.js 20 or newer is required.
+
+```bash
+npm install
+npm run dev
+```
+
+The development URL will appear in the terminal. To test the production build:
+
+```bash
+npm run build
+npm run preview
+```
+
+### Controls
+
+- Select a warden card at the top, or press `1`–`4`.
+- Click or tap a lawn tile to plant.
+- Plant the same type on an occupied tile to fuse it to level 2 or 3.
+- Click or tap glowing energy orbs to collect them.
+- Press Space or use the button in the top-right corner to pause.
+
+### Original mechanics
+
+#### Day/night resonance
+
+Day and night alternate every 32 seconds. Glowblooms produce energy faster in daylight, while Starshrooms cast significantly faster under moonlight.
+
+#### Plant fusion
+
+Wardens of the same type can fuse in place, restoring health and increasing maximum health. Level-three Blueberry Cannons can deal bonus damage, while level-three Starshrooms gain area damage.
+
+#### Dynamic weather
+
+Sunshowers generate extra energy, while tailwinds increase every projectile's speed. Each weather event changes the rhythm of the same formation.
+
+### Art asset pipeline
+
+Generated source artwork is stored in `assets/source/`. The repository includes a reproducible processing script that creates transparent, game-ready sprites:
+
+```bash
+python tools/process_assets.py
+```
+
+It requires Python, Pillow, and NumPy. The script segments connected backgrounds, removes adjacent characters, softens transparent edges, normalizes each sprite to 512×512, and writes the results to `public/assets/sprites/`.
+
+### GitHub Pages
+
+The repository includes `.github/workflows/deploy-pages.yml`. After pushing to `main` or `master`, select **GitHub Actions** under **Settings → Pages → Source** to enable automatic deployment.
+
+### Project structure
+
+```text
+.
+├── .github/workflows/       # GitHub Pages deployment
+├── assets/
+│   ├── source/              # Reproducible source artwork
+│   ├── gameplay-preview.png
+│   └── garden-defense-concept.png
+├── public/assets/
+│   ├── sprites/             # Eight transparent character sprites
+│   ├── favicon.svg
+│   └── garden-battlefield.png
+├── src/main.js              # Phaser scene, combat, and effects
+├── tools/process_assets.py  # Asset cleanup and sprite extraction
+├── index.html
+├── styles.css
+├── package.json
+└── LICENSE
+```
+
+### Open source and copyright
+
+The code is released under the [MIT License](LICENSE). The game title, characters, and current artwork were designed as an original project; no code or assets from other games are included.
+
+Issues and pull requests are welcome.
