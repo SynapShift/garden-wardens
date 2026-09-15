@@ -2,7 +2,7 @@ import Phaser from "phaser";
 
 const WIDTH = 1600;
 const HEIGHT = 900;
-const BOARD = { x: 240, y: 220, cols: 9, rows: 5, cellW: 140, cellH: 124 };
+const BOARD = { x: 240, y: 245, cols: 9, rows: 5, cellW: 140, cellH: 108 };
 const TOTAL_WAVES = 6;
 const PHASE_DURATION = 32;
 
