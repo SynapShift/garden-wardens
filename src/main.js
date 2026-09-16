@@ -67,6 +67,9 @@ class GameScene extends Phaser.Scene {
     this.orbs = [];
     this.mowers = [];
     this.energy = 175;
+    this.autoCollector = false;
+    this.autoCollectClock = 0;
+    this.weaponLevel = 0;
     this.selected = "sunbloom";
     this.phase = "day";
     this.phaseTime = 0;
@@ -151,8 +154,9 @@ class GameScene extends Phaser.Scene {
     this.weatherText = this.add.text(1365, 78, "天气 · 平静", { fontFamily: '"Noto Sans SC"', fontSize: 11, color: "#9fbaa6" }).setDepth(103);
 
     this.pauseButton = this.makeButton(1513, 74, "Ⅱ", 44, () => this.togglePause());
+    this.createToolDock();
     this.toastBg = this.add.graphics().setDepth(210).setAlpha(0);
-    this.toastText = this.add.text(WIDTH / 2, 158, "", { fontFamily: '"Noto Sans SC"', fontSize: 15, fontStyle: "bold", color: "#fff5d2" }).setOrigin(0.5).setDepth(211).setAlpha(0);
+    this.toastText = this.add.text(WIDTH / 2, 225, "", { fontFamily: '"Noto Sans SC"', fontSize: 15, fontStyle: "bold", color: "#fff5d2" }).setOrigin(0.5).setDepth(211).setAlpha(0);
   }
 
   drawCard(card) {
@@ -167,6 +171,99 @@ class GameScene extends Phaser.Scene {
     card.icon.setAlpha(affordable ? 1 : 0.45);
     card.name.setAlpha(affordable ? 1 : 0.5);
     card.info.setAlpha(affordable ? 1 : 0.45);
+  }
+
+  createToolDock() {
+    const definitions = [
+      { key: "collector", x: 500, title: "拾光藤", detail: "自动收集", action: () => this.buyCollector() },
+      { key: "mystery", x: 735, title: "奇趣种匣", detail: "随机奇遇", action: () => this.openMysteryBox() },
+      { key: "arsenal", x: 970, title: "荆棘工坊", detail: "全园火力", action: () => this.upgradeWeapons() },
+    ];
+    this.tools = definitions.map((definition) => {
+      const bg = this.add.graphics().setDepth(101);
+      const hit = this.add.rectangle(definition.x + 105, 169, 214, 52, 0xffffff, 0.001).setDepth(106).setInteractive({ useHandCursor: true });
+      const title = this.add.text(definition.x + 16, 151, definition.title, { fontFamily: '"Noto Sans SC"', fontSize: 13, fontStyle: "bold", color: "#f8efd0" }).setDepth(103);
+      const detail = this.add.text(definition.x + 16, 175, definition.detail, { fontFamily: '"Noto Sans SC"', fontSize: 10, color: "#8eaa96" }).setDepth(103);
+      const price = this.add.text(definition.x + 196, 169, "", { fontFamily: '"Noto Sans SC"', fontSize: 11, fontStyle: "bold", color: "#ffd965" }).setOrigin(1, 0.5).setDepth(103);
+      const tool = { ...definition, bg, hit, title, detail, price };
+      hit.on("pointerdown", definition.action);
+      hit.on("pointerover", () => bg.setAlpha(1.2));
+      hit.on("pointerout", () => bg.setAlpha(1));
+      return tool;
+    });
+  }
+
+  toolPrice(key) {
+    if (key === "collector") return this.autoCollector ? 0 : 280;
+    if (key === "mystery") return 140;
+    return this.weaponLevel >= 3 ? 0 : 260 + this.weaponLevel * 180;
+  }
+
+  drawTool(tool) {
+    const price = this.toolPrice(tool.key);
+    const complete = (tool.key === "collector" && this.autoCollector) || (tool.key === "arsenal" && this.weaponLevel >= 3);
+    const affordable = complete || this.energy >= price;
+    tool.bg.clear();
+    tool.bg.fillStyle(complete ? 0x315b32 : 0x112e20, complete ? 0.94 : 0.9);
+    tool.bg.fillRoundedRect(tool.x, 143, 214, 52, 13);
+    tool.bg.lineStyle(1, complete ? 0x9ad070 : 0xffffff, complete ? 0.45 : 0.09);
+    tool.bg.strokeRoundedRect(tool.x, 143, 214, 52, 13);
+    tool.price.setText(complete ? "已启用" : `${price} 光`);
+    tool.title.setAlpha(affordable ? 1 : 0.48);
+    tool.detail.setAlpha(affordable ? 1 : 0.42);
+    tool.price.setAlpha(affordable ? 1 : 0.42);
+  }
+
+  buyCollector() {
+    if (!this.started || this.isPaused || this.ended) return;
+    if (this.autoCollector) return this.toast("拾光藤正在替你收集能量");
+    if (this.energy < 280) return this.toast(`拾光藤还需要 ${280 - Math.floor(this.energy)} 点能量`);
+    this.energy -= 280;
+    this.autoCollector = true;
+    this.toast("拾光藤苏醒 · 能量球将自动归仓");
+    this.soundCue(720, 0.12, "triangle", 0.025);
+  }
+
+  openMysteryBox() {
+    if (!this.started || this.isPaused || this.ended) return;
+    if (this.energy < 140) return this.toast(`奇趣种匣还需要 ${140 - Math.floor(this.energy)} 点能量`);
+    this.energy -= 140;
+    const roll = Phaser.Math.Between(0, 3);
+    if (roll === 0) {
+      this.energy += 220;
+      this.toast("种匣开出丰收日 · 获得 220 能量");
+    } else if (roll === 1) {
+      this.entities.forEach((plant) => { plant.hp = plant.maxHp; });
+      this.toast("种匣开出春露 · 全园恢复生命");
+    } else if (roll === 2) {
+      const candidates = this.entities.filter((plant) => plant.level < 3);
+      if (candidates.length) {
+        const plant = Phaser.Utils.Array.GetRandom(candidates);
+        plant.level += 1; plant.maxHp = Math.round(plant.maxHp * 1.35); plant.hp = plant.maxHp;
+        plant.levelText.setText(`LV.${plant.level}`).setVisible(true);
+        this.toast(`种匣开出奇种 · ${PLANTS[plant.type].name} 免费升级`);
+      } else {
+        this.energy += 180;
+        this.toast("奇种已满园 · 转化为 180 能量");
+      }
+    } else {
+      [...this.enemyUnits].forEach((enemy) => { enemy.hp -= 55; enemy.slow = Math.max(enemy.slow, 4); if (enemy.hp <= 0) this.defeatEnemy(enemy); });
+      this.toast("种匣开出霜风 · 全场怪客受创减速");
+    }
+    this.burst(842, 170, 0xffd965, 22);
+    this.soundCue(940, 0.12, "triangle", 0.028);
+  }
+
+  upgradeWeapons() {
+    if (!this.started || this.isPaused || this.ended) return;
+    if (this.weaponLevel >= 3) return this.toast("荆棘工坊已强化至最高等级");
+    const price = this.toolPrice("arsenal");
+    if (this.energy < price) return this.toast(`火力强化还需要 ${price - Math.floor(this.energy)} 点能量`);
+    this.energy -= price;
+    this.weaponLevel += 1;
+    this.toast(`荆棘工坊强化至 ${this.weaponLevel} 级 · 弹体威力提升`);
+    this.cameras.main.flash(180, 255, 220, 105, false, undefined, 0.1);
+    this.soundCue(560 + this.weaponLevel * 90, 0.14, "sawtooth", 0.022);
   }
 
   makeButton(x, y, label, size, action) {
@@ -312,6 +409,7 @@ class GameScene extends Phaser.Scene {
     this.updateWeather(dt);
     this.updateWave(dt);
     this.updatePlants(dt);
+    this.updateTools(dt);
     this.updateEnemies(dt);
     this.updateProjectiles(dt);
     this.updateMowers(dt);
@@ -384,9 +482,18 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  updateTools(dt) {
+    if (!this.autoCollector || !this.orbs.length) return;
+    this.autoCollectClock -= dt;
+    if (this.autoCollectClock > 0) return;
+    this.autoCollectClock = 0.55;
+    this.collectOrb(this.orbs[0]);
+  }
+
   shoot(plant, texture, damage, speed) {
     const sprite = this.add.image(plant.sprite.x + 35, plant.sprite.y - 12, texture).setScale(0.75).setDepth(this.rowDepth(plant.row) + 7);
-    this.projectiles.push({ sprite, row: plant.row, type: texture, damage, speed, level: plant.level, life: 4 });
+    const weaponBoost = 1 + this.weaponLevel * 0.22;
+    this.projectiles.push({ sprite, row: plant.row, type: texture, damage: damage * weaponBoost, speed: speed * (1 + this.weaponLevel * 0.08), level: plant.level, life: 4 });
     this.tweens.add({ targets: plant.sprite, x: plant.sprite.x - 5, duration: 65, yoyo: true });
     this.soundCue(texture === "berry-orb" ? 260 : 440, 0.025, "sine", 0.012);
   }
@@ -475,13 +582,19 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: sprite, angle: 360, duration: 5000, repeat: -1 });
     sprite.on("pointerdown", (pointer) => {
       pointer.event.stopPropagation?.();
-      if (!sprite.active) return;
-      this.energy += value;
-      this.soundCue(880, 0.08, "sine", 0.025);
-      this.burst(sprite.x, sprite.y, this.phase === "day" ? 0xffe265 : 0xcda9ff, 16);
-      this.tweens.add({ targets: sprite, x: 78, y: 72, scale: 0.25, alpha: 0, duration: 360, ease: "Cubic.In", onComplete: () => this.removeOrb(orb) });
+      this.collectOrb(orb);
     });
     this.time.delayedCall(10000, () => { if (sprite.active) this.tweens.add({ targets: sprite, alpha: 0, duration: 450, onComplete: () => this.removeOrb(orb) }); });
+  }
+
+  collectOrb(orb) {
+    const { sprite, value } = orb;
+    if (!sprite?.active || !this.orbs.includes(orb)) return;
+    Phaser.Utils.Array.Remove(this.orbs, orb);
+    this.energy += value;
+    this.soundCue(880, 0.08, "sine", 0.025);
+    this.burst(sprite.x, sprite.y, this.phase === "day" ? 0xffe265 : 0xcda9ff, 16);
+    this.tweens.add({ targets: sprite, x: 78, y: 72, scale: 0.25, alpha: 0, duration: 360, ease: "Cubic.In", onComplete: () => sprite.destroy() });
   }
 
   removeOrb(orb) { Phaser.Utils.Array.Remove(this.orbs, orb); orb.sprite?.destroy(); }
@@ -511,6 +624,7 @@ class GameScene extends Phaser.Scene {
     this.waveText.setText(`波次 ${this.wave} / ${TOTAL_WAVES}`);
     this.weatherText.setText(this.weather === "sunshower" ? "天气 · 太阳雨" : this.weather === "tailwind" ? "天气 · 顺风" : "天气 · 平静");
     this.cards?.forEach((card) => this.drawCard(card));
+    this.tools?.forEach((tool) => this.drawTool(tool));
     for (const plant of this.entities) {
       const hurt = plant.hp < plant.maxHp;
       plant.healthBg.setVisible(hurt).setPosition(plant.sprite.x, plant.sprite.y + 8);
@@ -573,7 +687,7 @@ class GameScene extends Phaser.Scene {
   toast(message) {
     this.toastText.setText(message);
     const width = Math.max(220, this.toastText.width + 48);
-    this.toastBg.clear(); this.toastBg.fillStyle(0x0d2519, 0.93); this.toastBg.fillRoundedRect(WIDTH / 2 - width / 2, 137, width, 43, 22); this.toastBg.lineStyle(1, 0xffffff, 0.13); this.toastBg.strokeRoundedRect(WIDTH / 2 - width / 2, 137, width, 43, 22);
+    this.toastBg.clear(); this.toastBg.fillStyle(0x0d2519, 0.93); this.toastBg.fillRoundedRect(WIDTH / 2 - width / 2, 204, width, 43, 22); this.toastBg.lineStyle(1, 0xffffff, 0.13); this.toastBg.strokeRoundedRect(WIDTH / 2 - width / 2, 204, width, 43, 22);
     this.tweens.killTweensOf([this.toastBg, this.toastText]);
     this.toastBg.setAlpha(0); this.toastText.setAlpha(0);
     this.tweens.add({ targets: [this.toastBg, this.toastText], alpha: 1, yoyo: true, hold: 1250, duration: 170 });
