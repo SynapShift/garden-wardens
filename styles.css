@@ -36,7 +36,6 @@ body::before {
 .brand b { font-size: 19px; letter-spacing: .08em; }
 .brand small { color: #8fb297; font-size: 8px; font-weight: 900; letter-spacing: .23em; }
 .garden-status { display: flex; align-items: center; gap: 7px; color: #91ad98; font-size: 11px; font-weight: 700; letter-spacing: .1em; }
-.garden-status svg { width: 18px; height: 18px; overflow: visible; fill: none; stroke: #88c875; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
 #game-container {
   position: relative;
