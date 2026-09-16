@@ -14,6 +14,7 @@ An original hand-painted WebGL garden-defense game built with Phaser 3 and Vite,
 - Four original plant wardens and four original garden invaders
 - Day/night resonance, three-level plant fusion, dynamic weather, and energy recovery
 - Energy-powered tools for auto-collection, random garden events, and global weapon upgrades
+- A dynamic threat system that scales with waves and formation strength
 - Hand-painted transparent character sprites and a dedicated battlefield background
 - Breathing, swaying, planting, recoil, and walking animations
 - Projectile trails, burst particles, hit flashes, slow effects, and camera shake

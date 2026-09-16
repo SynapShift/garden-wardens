@@ -14,10 +14,10 @@ const PLANTS = {
 };
 
 const ENEMIES = {
-  gardener: { hp: 150, speed: 19, damage: 34, reward: 18, scale: 0.22 },
-  runner: { hp: 105, speed: 33, damage: 24, reward: 20, scale: 0.22 },
-  bucket: { hp: 310, speed: 14, damage: 42, reward: 30, scale: 0.23 },
-  brute: { hp: 660, speed: 9, damage: 66, reward: 55, scale: 0.28 },
+  gardener: { hp: 150, speed: 19, damage: 34, reward: 12, scale: 0.22 },
+  runner: { hp: 105, speed: 33, damage: 24, reward: 15, scale: 0.22 },
+  bucket: { hp: 310, speed: 14, damage: 42, reward: 22, scale: 0.23 },
+  brute: { hp: 660, speed: 9, damage: 66, reward: 38, scale: 0.28 },
 };
 
 class BootScene extends Phaser.Scene {
@@ -66,7 +66,7 @@ class GameScene extends Phaser.Scene {
     this.projectiles = [];
     this.orbs = [];
     this.mowers = [];
-    this.energy = 175;
+    this.energy = 150;
     this.autoCollector = false;
     this.autoCollectClock = 0;
     this.weaponLevel = 0;
@@ -77,7 +77,7 @@ class GameScene extends Phaser.Scene {
     this.weatherClock = 18;
     this.weatherRemaining = 0;
     this.wave = 1;
-    this.spawnTarget = 5;
+    this.spawnTarget = 6;
     this.spawned = 0;
     this.spawnClock = 2;
     this.betweenWaves = 0;
@@ -130,7 +130,7 @@ class GameScene extends Phaser.Scene {
     panel.fillStyle(0x173526, 0.94); panel.fillRoundedRect(42, 35, 176, 77, 18);
 
     this.energyIcon = this.add.image(77, 73, "energy-orb").setScale(0.72).setDepth(102);
-    this.energyText = this.add.text(109, 51, "175", { fontFamily: '"Noto Sans SC"', fontSize: 28, fontStyle: "bold", color: "#fff4c9" }).setDepth(102);
+    this.energyText = this.add.text(109, 51, "150", { fontFamily: '"Noto Sans SC"', fontSize: 28, fontStyle: "bold", color: "#fff4c9" }).setDepth(102);
     this.add.text(110, 83, "花园能量", { fontFamily: '"Noto Sans SC"', fontSize: 12, color: "#9fbaa6" }).setDepth(102);
 
     this.cards = [];
@@ -386,17 +386,21 @@ class GameScene extends Phaser.Scene {
   spawnEnemy() {
     const roll = Math.random();
     let type = "gardener";
-    if (this.wave >= 5 && roll > 0.84) type = "brute";
-    else if (this.wave >= 3 && roll > 0.63) type = "bucket";
-    else if (this.wave >= 2 && roll > 0.4) type = "runner";
+    if (this.wave >= 4 && roll > Math.max(0.72, 0.92 - this.wave * 0.025)) type = "brute";
+    else if (this.wave >= 2 && roll > Math.max(0.48, 0.76 - this.wave * 0.035)) type = "bucket";
+    else if (this.wave >= 2 && roll > 0.34) type = "runner";
     const data = ENEMIES[type];
     const row = Phaser.Math.Between(0, BOARD.rows - 1);
-    const scaleUp = 1 + (this.wave - 1) * 0.13;
+    const formationPressure = Math.max(0, this.entities.length - 10) * 0.025;
+    const upgradePressure = this.weaponLevel * 0.12;
+    const finalWavePressure = this.wave === TOTAL_WAVES ? 0.18 : 0;
+    const scaleUp = (1 + (this.wave - 1) * 0.28) * (1 + formationPressure + upgradePressure + finalWavePressure);
+    const damageUp = 1 + (this.wave - 1) * 0.09;
     const sprite = this.add.image(WIDTH + 90, this.groundY(row), type).setOrigin(0.5, 0.934).setScale(data.scale).setDepth(this.rowDepth(row) + 5);
     const shadow = this.add.ellipse(sprite.x, this.groundY(row) + 3, type === "brute" ? 105 : 72, 20, 0x102015, 0.22).setDepth(sprite.depth - 1);
     const healthBg = this.add.rectangle(sprite.x, sprite.y - 102, 76, 8, 0x182019, 0.7).setDepth(sprite.depth + 3);
     const health = this.add.rectangle(sprite.x - 38, sprite.y - 102, 76, 8, 0xe76c4d).setOrigin(0, 0.5).setDepth(sprite.depth + 4);
-    const enemy = { type, row, sprite, shadow, health, healthBg, hp: data.hp * scaleUp, maxHp: data.hp * scaleUp, speed: data.speed * (1 + this.wave * 0.025), slow: 0, attackClock: 0 };
+    const enemy = { type, row, sprite, shadow, health, healthBg, hp: data.hp * scaleUp, maxHp: data.hp * scaleUp, damage: data.damage * damageUp, speed: data.speed * (1 + this.wave * 0.07), slow: 0, attackClock: 0 };
     this.enemyUnits.push(enemy);
     this.tweens.add({ targets: sprite, y: sprite.y - 6, angle: { from: -1.2, to: 1.2 }, duration: type === "runner" ? 240 : 390, yoyo: true, repeat: -1, ease: "Sine.InOut" });
   }
@@ -449,13 +453,13 @@ class GameScene extends Phaser.Scene {
       this.spawnClock -= dt;
       if (this.spawnClock <= 0) {
         this.spawnEnemy(); this.spawned += 1;
-        this.spawnClock = Math.max(0.8, 2.65 - this.wave * 0.23) + Math.random() * 0.8;
+        this.spawnClock = Math.max(0.58, 2.25 - this.wave * 0.22) + Math.random() * 0.45;
       }
     } else if (!this.enemyUnits.length) {
       if (this.wave >= TOTAL_WAVES) return this.endGame(true);
       this.betweenWaves += dt;
       if (this.betweenWaves > 4) {
-        this.wave += 1; this.spawned = 0; this.spawnTarget = 4 + this.wave * 2; this.spawnClock = 1.5; this.betweenWaves = 0;
+        this.wave += 1; this.spawned = 0; this.spawnTarget = 5 + this.wave * 3; this.spawnClock = 1.25; this.betweenWaves = 0;
         this.toast(`第 ${this.wave} 波 · 新的怪客加入战场`);
       }
     }
@@ -467,7 +471,7 @@ class GameScene extends Phaser.Scene {
       const data = PLANTS[plant.type];
       if (plant.type === "sunbloom" && plant.cooldown <= 0) {
         plant.cooldown = data.cooldown * (this.phase === "day" ? 0.68 : 1.18) / (1 + (plant.level - 1) * 0.24);
-        this.spawnEnergy(plant.sprite.x + Phaser.Math.Between(-16, 16), plant.sprite.y - 30, 18 + plant.level * 7);
+        this.spawnEnergy(plant.sprite.x + Phaser.Math.Between(-16, 16), plant.sprite.y - 30, 14 + plant.level * 6);
         this.tweens.add({ targets: plant.sprite, scaleX: plant.baseScale * 1.12, scaleY: plant.baseScale * 1.12, yoyo: true, duration: 180 });
       }
       const target = this.enemyUnits.filter((enemy) => enemy.row === plant.row && enemy.sprite.x > plant.sprite.x).sort((a, b) => a.sprite.x - b.sprite.x)[0];
@@ -505,8 +509,8 @@ class GameScene extends Phaser.Scene {
       const blocker = this.entities.filter((plant) => plant.row === enemy.row && Math.abs(enemy.sprite.x - plant.sprite.x) < 62).sort((a, b) => b.sprite.x - a.sprite.x)[0];
       if (blocker) {
         if (enemy.attackClock <= 0) {
-          enemy.attackClock = 0.72;
-          blocker.hp -= ENEMIES[enemy.type].damage;
+          enemy.attackClock = Math.max(0.52, 0.74 - this.wave * 0.025);
+          blocker.hp -= enemy.damage;
           this.flash(blocker.sprite, 0xffdd9a);
           this.burst(blocker.sprite.x + 30, blocker.sprite.y, 0xd3a95c, 5);
           if (blocker.hp <= 0) this.removePlant(blocker);
