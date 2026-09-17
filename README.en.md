@@ -16,7 +16,7 @@ An original hand-painted WebGL garden-defense game built with Phaser 3 and Vite,
 - Energy-powered tools for auto-collection, random garden events, and global weapon upgrades
 - A dynamic threat system that scales with waves and formation strength
 - Hand-painted transparent character sprites and a dedicated battlefield background
-- Breathing, swaying, planting, recoil, and walking animations
+- Breathing, swaying, planting, recoil, plus multi-frame alternating footsteps and volumetric enemy falls
 - Projectile trails, burst particles, hit flashes, slow effects, and camera shake
 - Synthesized Web Audio feedback with no additional audio files
 - Keyboard, mouse, and touch controls
@@ -70,7 +70,8 @@ Python, Pillow, and NumPy are required. Processed assets are written to `public/
 ├── assets/source/           # Character source artwork
 ├── public/assets/           # Battlefield and transparent sprites
 ├── src/main.js              # Phaser scene, combat, and effects
-├── tools/process_assets.py  # Asset processing script
+├── tools/process_assets.py  # Character asset processing
+├── tools/process_enemy_sheets.py # Enemy animation sheet processing
 ├── index.html
 ├── styles.css
 └── LICENSE

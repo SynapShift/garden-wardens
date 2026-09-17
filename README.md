@@ -16,7 +16,7 @@
 - 能量工具系统：自动收集、随机种匣与全园火力强化
 - 随波次升级并适应阵型强度的动态威胁系统
 - 手绘透明角色精灵与独立战场背景
-- 呼吸、摇摆、种植、攻击后坐力及敌人步行动画
+- 呼吸、摇摆、种植、攻击后坐力，以及敌人的多帧左右步态与立体倒地动画
 - 弹体尾迹、爆裂粒子、受击闪白、减速染色和镜头震动
 - Web Audio 合成反馈音，无需额外音频素材
 - 支持键盘、鼠标和触控操作
@@ -70,7 +70,8 @@ python tools/process_assets.py
 ├── assets/source/           # 角色源图
 ├── public/assets/           # 游戏背景与透明精灵
 ├── src/main.js              # Phaser 场景、战斗与特效
-├── tools/process_assets.py  # 素材处理脚本
+├── tools/process_assets.py  # 角色素材处理脚本
+├── tools/process_enemy_sheets.py # 敌人动画帧表处理
 ├── index.html
 ├── styles.css
 └── LICENSE

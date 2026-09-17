@@ -36,7 +36,7 @@ class BootScene extends Phaser.Scene {
 
     this.load.image("battlefield", "assets/garden-battlefield.png");
     Object.keys(PLANTS).forEach((key) => this.load.image(key, `assets/sprites/${key}.png`));
-    Object.keys(ENEMIES).forEach((key) => this.load.image(key, `assets/sprites/${key}.png`));
+    Object.keys(ENEMIES).forEach((key) => this.load.spritesheet(`${key}-sheet`, `assets/animations/${key}-sheet.webp`, { frameWidth: 512, frameHeight: 512, endFrame: 7 }));
   }
 
   create() { this.scene.start("game"); }
@@ -48,6 +48,7 @@ class GameScene extends Phaser.Scene {
   create() {
     this.reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     this.createTextures();
+    this.createEnemyAnimations();
     this.add.image(WIDTH / 2, HEIGHT / 2, "battlefield").setDisplaySize(WIDTH, HEIGHT);
     this.createLaneAtmosphere();
     this.createHUD();
@@ -109,6 +110,16 @@ class GameScene extends Phaser.Scene {
     mower.fillStyle(0x2c342d); mower.fillCircle(20, 52, 11); mower.fillCircle(56, 52, 11);
     mower.lineStyle(7, 0xd9ded4); mower.beginPath(); mower.moveTo(61, 17); mower.lineTo(82, 0); mower.strokePath();
     mower.generateTexture("mower", 90, 66); mower.destroy();
+  }
+
+  createEnemyAnimations() {
+    const frameRates = { gardener: 7, runner: 11, bucket: 6, brute: 5 };
+    Object.keys(ENEMIES).forEach((type) => {
+      if (!this.anims.exists(`${type}-walk`)) {
+        this.anims.create({ key: `${type}-walk`, frames: this.anims.generateFrameNumbers(`${type}-sheet`, { start: 0, end: 3 }), frameRate: frameRates[type], repeat: -1 });
+        this.anims.create({ key: `${type}-die`, frames: this.anims.generateFrameNumbers(`${type}-sheet`, { start: 4, end: 7 }), frameRate: 7, repeat: 0 });
+      }
+    });
   }
 
   createLaneAtmosphere() {
@@ -397,13 +408,11 @@ class GameScene extends Phaser.Scene {
     const finalWavePressure = this.wave === TOTAL_WAVES ? 0.18 : 0;
     const scaleUp = (1 + (this.wave - 1) * 0.28) * (1 + formationPressure + upgradePressure + finalWavePressure);
     const damageUp = 1 + (this.wave - 1) * 0.09;
-    const sprite = this.add.image(WIDTH + 90, this.groundY(row), type).setOrigin(0.5, 0.934).setScale(data.scale).setDepth(this.rowDepth(row) + 5);
+    const sprite = this.add.sprite(WIDTH + 90, this.groundY(row), `${type}-sheet`, 0).setOrigin(0.5, 0.965).setScale(data.scale).setDepth(this.rowDepth(row) + 5).play(`${type}-walk`);
     const shadow = this.add.ellipse(sprite.x, this.groundY(row) + 3, type === "brute" ? 105 : 72, 20, 0x102015, 0.22).setDepth(sprite.depth - 1);
     const healthBg = this.add.rectangle(sprite.x, sprite.y - 102, 76, 8, 0x182019, 0.7).setDepth(sprite.depth + 3);
     const health = this.add.rectangle(sprite.x - 38, sprite.y - 102, 76, 8, 0xe76c4d).setOrigin(0, 0.5).setDepth(sprite.depth + 4);
-    const gaitSpeed = { gardener: 6.2, runner: 9.2, bucket: 5.2, brute: 4.1 }[type];
-    const gaitPhase = Math.random() * Math.PI * 2;
-    const enemy = { type, row, sprite, shadow, health, healthBg, hp: data.hp * scaleUp, maxHp: data.hp * scaleUp, damage: data.damage * damageUp, speed: data.speed * (1 + this.wave * 0.07), slow: 0, attackClock: 0, attackKick: 0, baseScale: data.scale, gaitSpeed, gaitPhase, stepIndex: Math.floor(gaitPhase / Math.PI) };
+    const enemy = { type, row, sprite, shadow, health, healthBg, hp: data.hp * scaleUp, maxHp: data.hp * scaleUp, damage: data.damage * damageUp, speed: data.speed * (1 + this.wave * 0.07), slow: 0, attackClock: 0, attackKick: 0, baseScale: data.scale, contactFrame: -1 };
     this.enemyUnits.push(enemy);
   }
 
@@ -537,7 +546,8 @@ class GameScene extends Phaser.Scene {
     const ground = this.groundY(enemy.row);
     const motion = this.reducedMotion ? 0.28 : 1;
     if (attacking) {
-      const pulse = Math.sin(this.elapsed * 8 + enemy.gaitPhase);
+      enemy.sprite.anims.pause();
+      const pulse = Math.sin(this.elapsed * 8 + enemy.sprite.x * 0.01);
       enemy.sprite.y = ground - Math.max(0, pulse) * 1.5 * motion;
       enemy.sprite.angle = (-1.2 - enemy.attackKick * 5 + pulse * 0.8) * motion;
       enemy.sprite.setScale(enemy.baseScale * (1 + enemy.attackKick * 0.045), enemy.baseScale * (1 - enemy.attackKick * 0.035));
@@ -546,22 +556,19 @@ class GameScene extends Phaser.Scene {
     }
 
     const slowFactor = enemy.slow > 0 ? 0.58 : 1;
-    enemy.gaitPhase += dt * enemy.gaitSpeed * slowFactor;
-    const stride = Math.sin(enemy.gaitPhase);
-    const lift = Math.abs(stride);
-    const contact = Math.pow(Math.abs(Math.cos(enemy.gaitPhase)), 8);
-    enemy.sprite.y = ground - lift * 5.5 * motion;
-    enemy.sprite.angle = (-1 + stride * 1.9) * motion;
-    enemy.sprite.setScale(
-      enemy.baseScale * (1 + contact * 0.028 * motion),
-      enemy.baseScale * (1 - contact * 0.035 * motion),
-    );
+    if (enemy.sprite.anims.currentAnim?.key !== `${enemy.type}-walk`) enemy.sprite.play(`${enemy.type}-walk`);
+    else if (!enemy.sprite.anims.isPlaying) enemy.sprite.anims.resume();
+    enemy.sprite.anims.timeScale = (this.reducedMotion ? 0.72 : 1) * slowFactor;
+    const frame = Number(enemy.sprite.frame.name) % 4;
+    const lift = frame === 1 || frame === 3 ? 1 : 0;
+    enemy.sprite.y = ground - lift * 2 * motion;
+    enemy.sprite.angle = 0;
+    enemy.sprite.setScale(enemy.baseScale);
     const shadowWidth = (enemy.type === "brute" ? 105 : 72) * (1 - lift * 0.12 * motion);
     enemy.shadow.setPosition(enemy.sprite.x, ground + 3).setDisplaySize(shadowWidth, 20 - lift * 3 * motion).setAlpha(0.18 + (1 - lift) * 0.08);
 
-    const stepIndex = Math.floor(enemy.gaitPhase / Math.PI);
-    if (stepIndex !== enemy.stepIndex) {
-      enemy.stepIndex = stepIndex;
+    if ((frame === 0 || frame === 2) && frame !== enemy.contactFrame) {
+      enemy.contactFrame = frame;
       if (!this.reducedMotion && Math.random() < 0.42) this.footstepDust(enemy);
     }
   }
@@ -661,8 +668,12 @@ class GameScene extends Phaser.Scene {
     Phaser.Utils.Array.Remove(this.enemyUnits, enemy);
     this.burst(enemy.sprite.x, enemy.sprite.y, 0xa5c789, enemy.type === "brute" ? 28 : 18);
     this.soundCue(180, 0.045, "triangle", 0.016);
-    this.tweens.add({ targets: enemy.sprite, alpha: 0, scaleX: enemy.sprite.scaleX * 1.18, scaleY: 0.05, angle: -9, duration: 280, ease: "Back.In", onComplete: () => enemy.sprite.destroy() });
-    enemy.shadow.destroy(); enemy.health.destroy(); enemy.healthBg.destroy();
+    enemy.sprite.clearTint().setAngle(0).setScale(enemy.baseScale).play(`${enemy.type}-die`);
+    this.tweens.add({ targets: enemy.shadow, alpha: 0, scaleX: 1.3, duration: 620, ease: "Quad.Out", onComplete: () => enemy.shadow.destroy() });
+    this.time.delayedCall(420, () => {
+      if (enemy.sprite.active) this.tweens.add({ targets: enemy.sprite, alpha: 0, duration: 320, ease: "Quad.In", onComplete: () => enemy.sprite.destroy() });
+    });
+    enemy.health.destroy(); enemy.healthBg.destroy();
   }
 
   updateHUD() {
