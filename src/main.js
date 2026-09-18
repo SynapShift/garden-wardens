@@ -72,6 +72,13 @@ class GameScene extends Phaser.Scene {
     this.autoCollector = false;
     this.autoCollectClock = 0;
     this.weaponLevel = 0;
+    this.toolboxOpen = false;
+    this.toolboxHinted = false;
+    this.hasPlacedPlant = false;
+    this.hasCollectedOrb = false;
+    this.hasFusedPlant = false;
+    this.energyHintShown = false;
+    this.laneWarningAt = Array(BOARD.rows).fill(-Infinity);
     this.selected = "sunbloom";
     this.phase = "day";
     this.phaseTime = 0;
@@ -203,6 +210,31 @@ class GameScene extends Phaser.Scene {
       hit.on("pointerout", () => bg.setAlpha(1));
       return tool;
     });
+    this.toolboxBg = this.add.graphics().setDepth(101);
+    this.toolboxHit = this.add.rectangle(1375, 169, 214, 52, 0xffffff, 0.001).setDepth(106).setInteractive({ useHandCursor: true });
+    this.toolboxTitle = this.add.text(1290, 169, "花园工具箱", { fontFamily: '"Noto Sans SC"', fontSize: 13, fontStyle: "bold", color: "#f8efd0" }).setOrigin(0, 0.5).setDepth(103);
+    this.toolboxArrow = this.add.text(1461, 169, "＋", { fontFamily: '"Noto Sans SC"', fontSize: 18, color: "#ffd965" }).setOrigin(0.5).setDepth(103);
+    this.toolboxBadge = this.add.text(1274, 145, "可用", { fontFamily: '"Noto Sans SC"', fontSize: 10, fontStyle: "bold", color: "#18331f", backgroundColor: "#d9ec77", padding: { x: 8, y: 3 } }).setOrigin(0.5).setDepth(107).setVisible(false);
+    this.toolboxHit.on("pointerdown", () => {
+      if (!this.started || this.ended) return;
+      this.toolboxOpen = !this.toolboxOpen;
+      this.toolboxHinted = true;
+      this.updateToolbox();
+    });
+    this.toolboxHit.on("pointerover", () => this.toolboxBg.setAlpha(1.2));
+    this.toolboxHit.on("pointerout", () => this.toolboxBg.setAlpha(1));
+    this.updateToolbox();
+  }
+
+  updateToolbox() {
+    this.toolboxBg.clear();
+    this.toolboxBg.fillStyle(this.toolboxOpen ? 0x294c31 : 0x112e20, 0.94);
+    this.toolboxBg.fillRoundedRect(1268, 143, 214, 52, 13);
+    this.toolboxBg.lineStyle(1, this.toolboxOpen ? 0xd9ec77 : 0xffffff, this.toolboxOpen ? 0.38 : 0.1);
+    this.toolboxBg.strokeRoundedRect(1268, 143, 214, 52, 13);
+    this.toolboxArrow.setText(this.toolboxOpen ? "−" : "＋");
+    this.tools?.forEach((tool) => [tool.bg, tool.hit, tool.title, tool.detail, tool.price].forEach((item) => item.setVisible(this.toolboxOpen)));
+    this.toolboxBadge?.setVisible(!this.toolboxOpen && !this.toolboxHinted && this.energy >= 140);
   }
 
   toolPrice(key) {
@@ -318,7 +350,7 @@ class GameScene extends Phaser.Scene {
     button.on("pointerdown", () => {
       this.modal.destroy(true);
       this.started = true;
-      this.toast("第一波怪客正在接近");
+      this.toast("先选择守卫，在草坪上种下第一株植物");
       this.soundCue(520, 0.08, "sine");
     });
     this.modal = this.add.container(0, 0, [shade, panel, kicker, title, copy, buttonBg, buttonText, button]).setDepth(300);
@@ -372,6 +404,10 @@ class GameScene extends Phaser.Scene {
       this.burst(existing.sprite.x, existing.sprite.y, data.color, 20);
       this.soundCue(760, 0.1, "triangle");
       this.toast(`${data.name} 融合至 LV.${existing.level}`);
+      if (!this.hasFusedPlant) {
+        this.hasFusedPlant = true;
+        this.time.delayedCall(1550, () => this.toast("融合完成 · 继续搭配守卫，守住五条草坪"));
+      }
       return;
     }
     if (this.energy < data.cost) return this.toast(`还需要 ${data.cost - Math.floor(this.energy)} 点能量`);
@@ -388,6 +424,10 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: sprite, y: y - 4, angle: { from: -1.5, to: 1.5 }, duration: 1150 + Math.random() * 350, yoyo: true, repeat: -1, ease: "Sine.InOut" });
     this.burst(x, y + 38, 0xc9ed76, 12);
     this.soundCue(390, 0.06, "triangle");
+    if (!this.hasPlacedPlant) {
+      this.hasPlacedPlant = true;
+      this.time.delayedCall(550, () => this.toast(this.selected === "sunbloom" ? "辉光花会产出能量 · 点击发光能量收集" : "种下辉光花，持续补充花园能量"));
+    }
   }
 
   colX(col) { return BOARD.x + col * BOARD.cellW + BOARD.cellW / 2; }
@@ -403,17 +443,30 @@ class GameScene extends Phaser.Scene {
     else if (this.wave >= 2 && roll > 0.34) type = "runner";
     const data = ENEMIES[type];
     const row = Phaser.Math.Between(0, BOARD.rows - 1);
+    this.warnLane(row);
     const formationPressure = Math.max(0, this.entities.length - 10) * 0.025;
     const upgradePressure = this.weaponLevel * 0.12;
     const finalWavePressure = this.wave === TOTAL_WAVES ? 0.18 : 0;
     const scaleUp = (1 + (this.wave - 1) * 0.28) * (1 + formationPressure + upgradePressure + finalWavePressure);
     const damageUp = 1 + (this.wave - 1) * 0.09;
-    const sprite = this.add.sprite(WIDTH + 90, this.groundY(row), `${type}-sheet`, 0).setOrigin(0.5, 0.965).setScale(data.scale).setDepth(this.rowDepth(row) + 5).play(`${type}-walk`);
+    const sprite = this.add.sprite(WIDTH + 125, this.groundY(row), `${type}-sheet`, 0).setOrigin(0.5, 0.965).setScale(data.scale).setAlpha(0.18).setDepth(this.rowDepth(row) + 5).play(`${type}-walk`);
     const shadow = this.add.ellipse(sprite.x, this.groundY(row) + 3, type === "brute" ? 105 : 72, 20, 0x102015, 0.22).setDepth(sprite.depth - 1);
     const healthBg = this.add.rectangle(sprite.x, sprite.y - 102, 76, 8, 0x182019, 0.7).setDepth(sprite.depth + 3);
     const health = this.add.rectangle(sprite.x - 38, sprite.y - 102, 76, 8, 0xe76c4d).setOrigin(0, 0.5).setDepth(sprite.depth + 4);
     const enemy = { type, row, sprite, shadow, health, healthBg, hp: data.hp * scaleUp, maxHp: data.hp * scaleUp, damage: data.damage * damageUp, speed: data.speed * (1 + this.wave * 0.07), slow: 0, attackClock: 0, attackKick: 0, baseScale: data.scale, contactFrame: -1 };
     this.enemyUnits.push(enemy);
+    this.tweens.add({ targets: sprite, alpha: 1, duration: 720, ease: "Sine.Out" });
+    this.tweens.add({ targets: shadow, alpha: 0.22, duration: 720, ease: "Sine.Out" });
+  }
+
+  warnLane(row) {
+    if (this.elapsed - this.laneWarningAt[row] < 7) return;
+    this.laneWarningAt[row] = this.elapsed;
+    const y = this.rowY(row);
+    const glow = this.add.rectangle(1485, y, 215, BOARD.cellH - 12, 0xffb84f, 0).setDepth(78);
+    const marker = this.add.text(1515, y, `第 ${row + 1} 路  来袭  ◀`, { fontFamily: '"Noto Sans SC"', fontSize: 13, fontStyle: "bold", color: "#fff1b4", stroke: "#502d16", strokeThickness: 4 }).setOrigin(0.5).setDepth(79).setAlpha(0);
+    this.tweens.add({ targets: glow, alpha: 0.22, duration: 150, yoyo: true, hold: 340, onComplete: () => glow.destroy() });
+    this.tweens.add({ targets: marker, alpha: 1, x: 1480, duration: 190, yoyo: true, hold: 360, onComplete: () => marker.destroy() });
   }
 
   update(time, deltaMs) {
@@ -534,6 +587,9 @@ class GameScene extends Phaser.Scene {
       this.animateEnemyGait(enemy, dt, Boolean(blocker));
       enemy.healthBg.setPosition(enemy.sprite.x, enemy.sprite.y - 102);
       enemy.health.setPosition(enemy.sprite.x - 38, enemy.sprite.y - 102).setDisplaySize(76 * Math.max(0, enemy.hp / enemy.maxHp), 8);
+      const showHealth = enemy.hp < enemy.maxHp || enemy.sprite.x < 850;
+      enemy.healthBg.setVisible(showHealth);
+      enemy.health.setVisible(showHealth);
       if (enemy.sprite.x < BOARD.x - 42) {
         const mower = this.mowers[enemy.row];
         if (!mower.used) { mower.used = true; mower.active = true; this.toast("应急割草车启动！"); this.soundCue(130, 0.18, "sawtooth", 0.035); }
@@ -634,6 +690,10 @@ class GameScene extends Phaser.Scene {
     const targetY = Phaser.Math.Clamp(y + Phaser.Math.Between(65, 135), 210, 800);
     const orb = { sprite, value, expires: 10 };
     this.orbs.push(orb);
+    if (this.hasPlacedPlant && !this.hasCollectedOrb && !this.energyHintShown) {
+      this.energyHintShown = true;
+      this.time.delayedCall(760, () => this.toast("点击发光能量，补充花园储备"));
+    }
     this.tweens.add({ targets: sprite, scale: 1, y: targetY, duration: 700, ease: "Back.Out" });
     this.tweens.add({ targets: sprite, angle: 360, duration: 5000, repeat: -1 });
     sprite.on("pointerdown", (pointer) => {
@@ -648,6 +708,10 @@ class GameScene extends Phaser.Scene {
     if (!sprite?.active || !this.orbs.includes(orb)) return;
     Phaser.Utils.Array.Remove(this.orbs, orb);
     this.energy += value;
+    if (!this.hasCollectedOrb) {
+      this.hasCollectedOrb = true;
+      this.time.delayedCall(420, () => this.toast("在同类植物上再次种植，可以融合升级"));
+    }
     this.soundCue(880, 0.08, "sine", 0.025);
     this.burst(sprite.x, sprite.y, this.phase === "day" ? 0xffe265 : 0xcda9ff, 16);
     this.tweens.add({ targets: sprite, x: 78, y: 72, scale: 0.25, alpha: 0, duration: 360, ease: "Cubic.In", onComplete: () => sprite.destroy() });
@@ -685,6 +749,7 @@ class GameScene extends Phaser.Scene {
     this.weatherText.setText(this.weather === "sunshower" ? "天气 · 太阳雨" : this.weather === "tailwind" ? "天气 · 顺风" : "天气 · 平静");
     this.cards?.forEach((card) => this.drawCard(card));
     this.tools?.forEach((tool) => this.drawTool(tool));
+    this.updateToolbox();
     for (const plant of this.entities) {
       const hurt = plant.hp < plant.maxHp;
       plant.healthBg.setVisible(hurt).setPosition(plant.sprite.x, plant.sprite.y + 8);
