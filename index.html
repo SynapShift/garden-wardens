@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#132b20" />
-    <meta name="description" content="花园守夜人——原创手绘风 WebGL 植物塔防游戏。" />
+    <meta
+      name="description"
+      content="花园守夜人——原创手绘风 WebGL 植物塔防游戏。"
+    />
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
     <title>花园守夜人 · Garden Wardens</title>
@@ -13,17 +16,40 @@
     <main class="app-shell">
       <header class="brand-bar">
         <div class="brand">
-          <img class="brand-mark" src="./assets/garden-emblem.png" alt="" width="46" height="46" />
-          <span><b>花园守夜人</b><small>GARDEN WARDENS</small></span>
+          <img
+            class="brand-mark"
+            src="./assets/garden-emblem.png"
+            alt=""
+            width="46"
+            height="46"
+          />
+          <span
+            ><b data-zh="花园守夜人">花园守夜人</b
+            ><small>GARDEN WARDENS</small></span
+          >
         </div>
-        <div class="garden-status">花园守护中</div>
+        <div class="header-controls">
+          <div class="garden-status" data-zh="花园守护中">花园守护中</div>
+          <label class="language-picker"
+            >语言 / Language
+            <select id="language" aria-label="语言 / Language">
+              <option value="zh-CN">中文</option>
+              <option value="en">English</option>
+            </select></label
+          >
+        </div>
       </header>
       <section id="game-container" aria-label="花园守夜人游戏"></section>
       <footer>
-        <span><kbd>1–4</kbd> 选择守卫</span>
-        <span><kbd>空格</kbd> 暂停</span>
-        <span><kbd>点击</kbd> 种植 / 融合 / 收集</span>
-        <span>开源项目 · MIT</span>
+        <span><kbd>1–4</kbd> <span data-zh="选择守卫">选择守卫</span></span>
+        <span
+          ><kbd data-zh="空格">空格</kbd> <span data-zh="暂停">暂停</span></span
+        >
+        <span
+          ><kbd data-zh="点击">点击</kbd>
+          <span data-zh="种植 / 融合 / 收集">种植 / 融合 / 收集</span></span
+        >
+        <span data-zh="开源项目 · MIT">开源项目 · MIT</span>
       </footer>
     </main>
     <script type="module" src="/src/main.js"></script>
