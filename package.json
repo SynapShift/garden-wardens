@@ -1,16 +1,37 @@
 {
   "name": "garden-wardens",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "An original hand-painted WebGL garden tower-defense game.",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
+    "dev": "vite --host 127.0.0.1",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 127.0.0.1",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "tsc --project jsconfig.json",
+    "test": "vitest run --coverage",
+    "test:e2e": "playwright test"
   },
-  "dependencies": { "phaser": "^3.90.0" },
-  "devDependencies": { "vite": "^7.1.5" },
-  "engines": { "node": ">=20" },
+  "dependencies": {
+    "phaser": "4.2.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.1",
+    "@types/node": "26.6.5",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "prettier": "3.9.10",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=24.15.0"
+  },
   "license": "MIT"
 }
